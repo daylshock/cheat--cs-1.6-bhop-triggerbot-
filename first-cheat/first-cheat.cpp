@@ -76,7 +76,7 @@ namespace utils
 
         auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(cTime - pTime).count();
 
-        const int desiredRefreshRate = 360;
+        const int desiredRefreshRate = 60;
         const int frameTime = 1000 / desiredRefreshRate;
 
         if (elapsedTime < frameTime) {
@@ -117,7 +117,7 @@ class triggerBot : public cheatBase
 public:
     triggerBot(const uint32_t& incrosshair) : incrosshair(incrosshair) {}
 
-    void __fastcall _set(const uint32_t& incrosshair_new) { incrosshair = incrosshair_new;}
+    void __thiscall _set(const uint32_t& incrosshair_new) { incrosshair = incrosshair_new;}
 
     void _exec() override
     {
@@ -142,7 +142,7 @@ public:
         on_ground(on_ground), process(process), client_dll(client_dll) {
     }
 
-    void __fastcall _set(const uint32_t& on_ground_new) { on_ground = on_ground_new; }
+    void __thiscall _set(const uint32_t& on_ground_new) { on_ground = on_ground_new; }
 
     void _exec() override
     {
@@ -227,9 +227,9 @@ HANDLE startWriteMemory_T(HANDLE& process)
     return hThread;
 }
 
-void endRWMemory_T(HANDLE hThreadRead, HANDLE hThreadWrite)
+void endRWMemory_T(HANDLE& hThreadRead, HANDLE& hThreadWrite)
 {
-    if (hThreadRead != NULL && hThreadWrite != NULL) {
+    if (hThreadRead && hThreadWrite) {
         rwrd_running = false;
 
         WaitForSingleObject(hThreadRead, INFINITE);
@@ -250,8 +250,14 @@ inline bool _RUN()
             {
                 if (process)
                 {
-                    std::cout << "bhop|triggerBot active!" << '\n'
-                        << "Exit: F6";
+                    char arr[] = { "bhop | triggerBot active!" };
+
+                    for(char* i = arr; *(i) != '\0'; i++)
+                    {
+                        std::cout << *i;
+                        Sleep(1);
+                    }
+                    std::cout << "\nExit: F6";
 
                     HANDLE hReadThread = startReadMemory_T(process);
                     HANDLE hWriteThread = startWriteMemory_T(process);
@@ -265,8 +271,11 @@ inline bool _RUN()
         }
     }
     else
-        std::cout << "Error!" << '\n';
+    {
+        std::cout << "Please, run cs 1.6!" << '\n';
         return 0;
+    }
+        
 }
 
 int main()
