@@ -11,10 +11,10 @@
 #define HW "hw.dll"
 
 namespace offset {
-    const uintptr_t on_ground_offset = 0x122E2D4;
-    const uintptr_t jump_offset = 0x131434;
-    const uintptr_t incrosshair_offset = 0x125314;
-    const uintptr_t m_dwPunchAngles = 0x122E324;
+    constexpr uintptr_t on_ground_offset = 0x122E2D4;
+    constexpr uintptr_t jump_offset = 0x131434;
+    constexpr uintptr_t incrosshair_offset = 0x125314;
+    constexpr uintptr_t m_dwPunchAngles = 0x122E324;
 };
 namespace utils
 {
@@ -30,7 +30,7 @@ namespace utils
         return value;
     }
 
-    DWORD get_process_id(const char* process_name) {
+     DWORD get_process_id(const char* process_name) {
         DWORD processId = 0;
         HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
         if (snapshot != INVALID_HANDLE_VALUE) {
@@ -49,7 +49,7 @@ namespace utils
         }
         return processId;
     }
-    uintptr_t get_module_base_address(DWORD process_id, const char* module_name) {
+     uintptr_t get_module_base_address(DWORD process_id, const char* module_name) {
         uintptr_t moduleBaseAddress = 0;
         HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, process_id);
         if (snapshot != INVALID_HANDLE_VALUE) {
@@ -101,10 +101,10 @@ namespace utils
     }
 }
 
-    DWORD process_id = utils::get_process_id(PROCCESS_NAME);
+DWORD process_id = utils::get_process_id(PROCCESS_NAME);
     uintptr_t client_dll = utils::get_module_base_address(process_id, CLIENT);
-    uintptr_t hw_dll = utils::get_module_base_address(process_id, HW);
-    HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, process_id);
+        uintptr_t hw_dll = utils::get_module_base_address(process_id, HW);
+            HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, process_id);
 
 class cheatBase 
 {

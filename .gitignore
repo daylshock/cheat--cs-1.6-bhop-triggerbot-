@@ -1,4 +1,9 @@
 x64/
 Debug
 *.sln
-
+**/Debug/
+**/x64/
+**/*.vcxproj
+**/*.filters
+**/*.user
+*.vs
