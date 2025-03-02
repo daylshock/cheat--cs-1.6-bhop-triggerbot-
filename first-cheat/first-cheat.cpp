@@ -6,6 +6,7 @@
 #include <thread>
 #include <chrono>
 #include <map>
+#include <memory>
 
 #define PROCCESS_NAME "cs.exe"
 #define CLIENT "client.dll"
@@ -125,7 +126,7 @@ public:
 class triggerBot : public cheatBase
 {
 public:
-    triggerBot(const uint32_t& incrosshair) : incrosshair(incrosshair) {}
+    __thiscall triggerBot(const uint32_t& incrosshair) : incrosshair(incrosshair) {}
 
     void __thiscall _set(const uint32_t& incrosshair_new) { incrosshair = incrosshair_new;}
 
@@ -148,7 +149,7 @@ private:
 class bhop : public cheatBase
 {
 public:
-    bhop(const uint32_t& on_ground, HANDLE& process, uintptr_t& client_dll) :
+    __thiscall bhop(const uint32_t& on_ground, HANDLE& process, uintptr_t& client_dll) :
         on_ground(on_ground), process(process), client_dll(client_dll) {
     }
 
@@ -168,24 +169,40 @@ private:
     uintptr_t& client_dll;
 };
 
-bool rwrd_running = true;
+class cheatManager
+{
+public:
+    cheatManager() : bhop_t(std::make_unique<bhop>(0, process, client_dll)),
+                     triggerbot_t(std::make_unique<triggerBot>(0)){}
+    void _execAll()
+    {
+        bhop_t->_exec();
+        triggerbot_t->_exec();
+    }
 
-bhop bhop_t(0, process, client_dll);
-    triggerBot triggerbot_t(0);
+    void _setAll()
+    {
+        bhop_t->_set(utils::read_process_memory<uint32_t>(process, hw_dll + offset::on_ground_offset));
+        triggerbot_t->_set(utils::read_process_memory<uint32_t>(process, client_dll + offset::incrosshair_offset));
+    }
+private:
+    std::unique_ptr<bhop> bhop_t;
+    std::unique_ptr<triggerBot> triggerbot_t;
+}cheatManager_t;
+
+bool rwrd_running = true;
 
 DWORD WINAPI _readMemory_T(LPVOID lp)
 {
     while (rwrd_running)
     {
-        bhop_t._set(utils::read_process_memory<uint32_t>(process, hw_dll + offset::on_ground_offset));
-        triggerbot_t._set(utils::read_process_memory<uint32_t>(process, client_dll + offset::incrosshair_offset));
+        cheatManager_t._setAll();
         Sleep(10);
     }
     std::cout << "\nrd mem lock";
     return 0;
 }
-
-HANDLE startReadMemory_T(HANDLE& process)
+HANDLE WINAPI startReadMemory_T(HANDLE& process)
 {
     HANDLE hThread = CreateThread(
         NULL,
@@ -202,7 +219,7 @@ HANDLE startReadMemory_T(HANDLE& process)
     return hThread;
 }
 
-void endRWMemory_T(HANDLE& hThreadRead)
+inline void WINAPI endRWMemory_T(HANDLE& hThreadRead)
 {
     if (hThreadRead) {
         rwrd_running = false;
@@ -211,24 +228,25 @@ void endRWMemory_T(HANDLE& hThreadRead)
         CloseHandle(hThreadRead);
     }
 }
-
-void simLoadProcess() 
+inline void simLoadProcess() 
 {
     const char loadingSymbols[] = { '/','-' ,'\\','|' };
-    char welcomeBar [] = { "\n[Done]\n[Welcome!]\n[bhop-triggerBot] > [Active]\n[Exit] > [F6]" };
+    char welcomeBar [] = { "[Loading]\n*[Done]\n[Welcome!]\n[bhop-triggerBot] > [Active]\n[Exit] > [F6]" };
 
     const int SIZE = sizeof(loadingSymbols) / sizeof(loadingSymbols[0]);
-    std::cout << "[Loading]" << '\n';
-
-    for (int i = 0; i < 20; ++i)
-    {
-        std::cout << loadingSymbols[i % SIZE] << "\r";
-        std::cout.flush();
-        Sleep(100);
-    }
 
     for (char* i = welcomeBar; *(i) != '\0'; i++)
     {
+        if(*i == '*')
+        {
+            for (int i = 0; i < 20; ++i)
+            {
+                std::cout << loadingSymbols[i % SIZE] << "\r";
+                std::cout.flush();
+                Sleep(100);
+            }
+            continue;
+        }
         if (*i == '>')
         {
             (*i) = 0x10;
@@ -255,10 +273,7 @@ inline bool _RUN()
                     while (true) 
                     {
                         if (GetAsyncKeyState(0x75)) { break; }
-
-                            bhop_t._exec();
-                            triggerbot_t._exec();
-
+                        cheatManager_t._execAll();
                         Sleep(1);
                     }
                     endRWMemory_T(hReadThread);
