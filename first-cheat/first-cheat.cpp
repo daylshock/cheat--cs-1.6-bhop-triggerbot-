@@ -172,7 +172,7 @@ private:
 class cheatManager
 {
 public:
-    cheatManager() : bhop_t(std::make_unique<bhop>(0, process, client_dll)),
+    __thiscall cheatManager() : bhop_t(std::make_unique<bhop>(0, process, client_dll)),
                      triggerbot_t(std::make_unique<triggerBot>(0)){}
     void _execAll()
     {
