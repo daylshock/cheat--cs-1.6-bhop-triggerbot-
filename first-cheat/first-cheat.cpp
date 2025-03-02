@@ -102,7 +102,6 @@ namespace utils
     }
 }
 
-
 //struct modules 
 //{
 //    modules() : client_dll(utils::get_module_base_address(process_id, CLIENT)),
@@ -213,6 +212,32 @@ void endRWMemory_T(HANDLE& hThreadRead)
     }
 }
 
+void simLoadProcess() 
+{
+    const char loadingSymbols[] = { '/','-' ,'\\','|' };
+    char welcomeBar [] = { "\n[Done]\n[Welcome!]\n[bhop-triggerBot] > [Active]\n[Exit] > [F6]" };
+
+    const int SIZE = sizeof(loadingSymbols) / sizeof(loadingSymbols[0]);
+    std::cout << "[Loading]" << '\n';
+
+    for (int i = 0; i < 20; ++i)
+    {
+        std::cout << loadingSymbols[i % SIZE] << "\r";
+        std::cout.flush();
+        Sleep(100);
+    }
+
+    for (char* i = welcomeBar; *(i) != '\0'; i++)
+    {
+        if (*i == '>')
+        {
+            (*i) = 0x10;
+        }
+        std::cout << *i;
+        Sleep(100);
+    }
+}
+
 inline bool _RUN() 
 {
     if (process_id)
@@ -223,17 +248,7 @@ inline bool _RUN()
             {
                 if (process)
                 {   
-                    char arr[] = { "[Welcome!]\n[bhop-triggerBot] > [Active]\n[Exit] > [F6]" };
-
-                    for(char* i = arr; *(i) != '\0'; i++)
-                    {
-                        if(*i == '>')
-                        {
-                            (*i) = 0x10;
-                        }
-                        std::cout << *i;
-                        Sleep(5);
-                    }
+                    simLoadProcess();
 
                     HANDLE hReadThread = startReadMemory_T(process);
 
@@ -254,7 +269,7 @@ inline bool _RUN()
     }
     else
     {
-        std::cout << "[Please, run cs 1.6!]" << '\n';
+        std::cout << "\n[Please, run cs 1.6!]" << '\n';
         return 0;
     }
         
