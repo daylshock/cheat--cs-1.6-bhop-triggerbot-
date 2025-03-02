@@ -5,6 +5,7 @@
 #include <string>
 #include <thread>
 #include <chrono>
+#include <map>
 
 #define PROCCESS_NAME "cs.exe"
 #define CLIENT "client.dll"
@@ -91,7 +92,7 @@ namespace utils
 
         auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(cTime - pTime).count();
 
-        const int desiredRefreshRate = 101;
+        const int desiredRefreshRate = 60;
         const int frameTime = 1000 / desiredRefreshRate;
 
         if (elapsedTime < frameTime) {
@@ -100,6 +101,16 @@ namespace utils
         pTime = std::chrono::steady_clock::now();
     }
 }
+
+
+//struct modules 
+//{
+//    modules() : client_dll(utils::get_module_base_address(process_id, CLIENT)),
+//                hw_dll(utils::get_module_base_address(process_id, HW)) {}
+//private:
+//    uintptr_t client_dll;
+//    uintptr_t hw_dll;
+//}modules_t;
 
 DWORD process_id = utils::get_process_id(PROCCESS_NAME);
     uintptr_t client_dll = utils::get_module_base_address(process_id, CLIENT);
@@ -160,38 +171,18 @@ private:
 
 bool rwrd_running = true;
 
-uint32_t on_ground = 0;
-    uint32_t incrosshair = 0;
+bhop bhop_t(0, process, client_dll);
+    triggerBot triggerbot_t(0);
 
 DWORD WINAPI _readMemory_T(LPVOID lp)
 {
-    auto pTime = std::chrono::steady_clock::now();
-
     while (rwrd_running)
     {
-        on_ground = utils::read_process_memory<uint32_t>(process, hw_dll + offset::on_ground_offset);
-        incrosshair = utils::read_process_memory<uint32_t>(process, client_dll + offset::incrosshair_offset);
+        bhop_t._set(utils::read_process_memory<uint32_t>(process, hw_dll + offset::on_ground_offset));
+        triggerbot_t._set(utils::read_process_memory<uint32_t>(process, client_dll + offset::incrosshair_offset));
+        Sleep(10);
     }
     std::cout << "\nrd mem lock";
-    return 0;
-}
-DWORD WINAPI _writeMemory_T(LPVOID lp)
-{
-    bhop bhop_t(on_ground, process, client_dll);
-    triggerBot triggerbot_t(incrosshair);
-
-    auto pTime = std::chrono::steady_clock::now();
-    while (rwrd_running)
-    {
-        bhop_t._set(on_ground);
-        triggerbot_t._set(incrosshair);
-
-        bhop_t._exec();
-        triggerbot_t._exec();
-
-        utils::writeFrequencyСontrol(pTime);
-    }
-    std::cout << "\nwr mem lock";
     return 0;
 }
 
@@ -211,32 +202,14 @@ HANDLE startReadMemory_T(HANDLE& process)
     }
     return hThread;
 }
-HANDLE startWriteMemory_T(HANDLE& process)
-{
-    HANDLE hThread = CreateThread(
-        NULL,
-        0,
-        _writeMemory_T,
-        process,
-        0,
-        NULL
-    );
-    if (hThread == NULL) {
-        std::cerr << "Не удалось создать поток записи памяти!" << std::endl;
-    }
-    return hThread;
-}
 
-void endRWMemory_T(HANDLE& hThreadRead, HANDLE& hThreadWrite)
+void endRWMemory_T(HANDLE& hThreadRead)
 {
-    if (hThreadRead && hThreadWrite) {
+    if (hThreadRead) {
         rwrd_running = false;
 
         WaitForSingleObject(hThreadRead, INFINITE);
-        WaitForSingleObject(hThreadWrite, INFINITE);
-
         CloseHandle(hThreadRead);
-        CloseHandle(hThreadWrite);
     }
 }
 
@@ -249,22 +222,31 @@ inline bool _RUN()
             if (hw_dll)
             {
                 if (process)
-                {
-                    char arr[] = { "bhop | triggerBot active!" };
+                {   
+                    char arr[] = { "[Welcome!]\n[bhop-triggerBot] > [Active]\n[Exit] > [F6]" };
 
                     for(char* i = arr; *(i) != '\0'; i++)
                     {
+                        if(*i == '>')
+                        {
+                            (*i) = 0x10;
+                        }
                         std::cout << *i;
-                        Sleep(1);
+                        Sleep(5);
                     }
-                    std::cout << "\nExit: F6";
 
                     HANDLE hReadThread = startReadMemory_T(process);
-                    HANDLE hWriteThread = startWriteMemory_T(process);
 
-                    while (true) { if (GetAsyncKeyState(0x75)) { break; } }
+                    while (true) 
+                    {
+                        if (GetAsyncKeyState(0x75)) { break; }
 
-                    endRWMemory_T(hReadThread, hWriteThread);
+                            bhop_t._exec();
+                            triggerbot_t._exec();
+
+                        Sleep(1);
+                    }
+                    endRWMemory_T(hReadThread);
                     return 0;
                 }
             }
@@ -272,7 +254,7 @@ inline bool _RUN()
     }
     else
     {
-        std::cout << "Please, run cs 1.6!" << '\n';
+        std::cout << "[Please, run cs 1.6!]" << '\n';
         return 0;
     }
         
