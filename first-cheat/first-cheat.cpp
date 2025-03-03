@@ -47,8 +47,8 @@ namespace utils
                     }
                 } while (Process32Next(snapshot, &processEntry));
             }
-            CloseHandle(snapshot);
-        }
+	    CloseHandle(snapshot);
+	}
         return processId;
     }
      uintptr_t get_module_base_address(DWORD process_id, const char* module_name) {
@@ -70,52 +70,40 @@ namespace utils
         }
         return moduleBaseAddress;
     }
-
-    template <typename T>
-    constexpr void readFrequencyСontrol(T &pTime)
-    {
-        auto cTime = std::chrono::steady_clock::now();
-
-        auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(cTime - pTime).count();
-
-        const int desiredRefreshRate = 60;
-        const int frameTime = 1000 / desiredRefreshRate;
-
-        if (elapsedTime < frameTime) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(frameTime - elapsedTime));
-        }
-        pTime = std::chrono::steady_clock::now();
-    }
-    template <typename T>
-    constexpr void writeFrequencyСontrol(T& pTime)
-    {
-        auto cTime = std::chrono::steady_clock::now();
-
-        auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(cTime - pTime).count();
-
-        const int desiredRefreshRate = 60;
-        const int frameTime = 1000 / desiredRefreshRate;
-
-        if (elapsedTime < frameTime) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(frameTime - elapsedTime));
-        }
-        pTime = std::chrono::steady_clock::now();
-    }
 }
 
-//struct modules 
-//{
-//    modules() : client_dll(utils::get_module_base_address(process_id, CLIENT)),
-//                hw_dll(utils::get_module_base_address(process_id, HW)) {}
-//private:
-//    uintptr_t client_dll;
-//    uintptr_t hw_dll;
-//}modules_t;
+class processModules
+{
+public:
+	processModules(const char* processName, const char* clientModuleName, const char* hwModuleName)
+	{
+		process_id = utils::get_process_id(processName);
+		if(!process_id) throw std::runtime_error("Invalid processID");
+		process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, process_id);
+	   	if(!process) throw std::runtime_error("Invalid processHANDLE");
+		client_dll = utils::get_module_base_address(process_id, clientModuleName);
+		if(!client_dll) throw std::runtime_error("Invalid client_dll");
+		hw_dll = utils::get_module_base_address(process_id, hwModuleName);
+		if(!hw_dll) throw std::runtime_error("Invalid hw_dll");	
+	}
+	~processModules()
+	{
+		if(process)
+			CloseHandle(process);
+	}
 
-DWORD process_id = utils::get_process_id(PROCCESS_NAME);
-    uintptr_t client_dll = utils::get_module_base_address(process_id, CLIENT);
-        uintptr_t hw_dll = utils::get_module_base_address(process_id, HW);
-            HANDLE process = OpenProcess(PROCESS_ALL_ACCESS, FALSE, process_id);
+	uintptr_t& getClientModuleBaseAddress(){return client_dll;}
+    uintptr_t& getHwModuleBaseAddress() {return hw_dll;}
+	DWORD getProcessId(){return process_id;}
+	HANDLE& getProcessHandle(){return process;}
+
+private:
+	uintptr_t client_dll = 0;
+	uintptr_t hw_dll = 0;
+	DWORD process_id = 0;
+	HANDLE process = nullptr;
+
+}*processModules_t = new processModules(PROCCESS_NAME, CLIENT, HW);
 
 class cheatBase 
 {
@@ -126,11 +114,12 @@ public:
 class triggerBot : public cheatBase
 {
 public:
-    triggerBot(const uint32_t& incrosshair) : incrosshair(incrosshair) {}
+    triggerBot(const uint32_t& incrosshair) : incrosshair(incrosshair)
+    {}
 
     void __thiscall _set(const uint32_t& incrosshair_new) { incrosshair = incrosshair_new;}
 
-    void _exec() override
+	void _exec() override
     {
         if(incrosshair == 0x02)
         {
@@ -150,8 +139,7 @@ class bhop : public cheatBase
 {
 public:
     bhop(const uint32_t& on_ground, HANDLE& process, uintptr_t& client_dll) :
-        on_ground(on_ground), process(process), client_dll(client_dll) {
-    }
+        on_ground(on_ground), process(process), client_dll(client_dll) {}
 
     void __thiscall _set(const uint32_t& on_ground_new) { on_ground = on_ground_new; }
 
@@ -165,25 +153,24 @@ public:
     }
 private:
     uint32_t on_ground;
-    HANDLE& process;
-    uintptr_t& client_dll;
+    HANDLE process;
+    uintptr_t client_dll;
 };
 
 class cheatManager
 {
 public:
-    cheatManager() : bhop_t(std::make_unique<bhop>(0, process, client_dll)),
-                     triggerbot_t(std::make_unique<triggerBot>(0)){}
+    cheatManager() : 	bhop_t(std::make_unique<bhop>(0, processModules_t->getProcessHandle(), processModules_t->getClientModuleBaseAddress())),
+						triggerbot_t(std::make_unique<triggerBot>(0)){}
     void _execAll()
     {
         bhop_t->_exec();
         triggerbot_t->_exec();
     }
-
     void _setAll()
     {
-        bhop_t->_set(utils::read_process_memory<uint32_t>(process, hw_dll + offset::on_ground_offset));
-        triggerbot_t->_set(utils::read_process_memory<uint32_t>(process, client_dll + offset::incrosshair_offset));
+        bhop_t->_set(utils::read_process_memory<uint32_t>(processModules_t->getProcessHandle(), processModules_t->getHwModuleBaseAddress() + offset::on_ground_offset));
+        triggerbot_t->_set(utils::read_process_memory<uint32_t>(processModules_t->getProcessHandle(), processModules_t->getClientModuleBaseAddress() + offset::incrosshair_offset));
     }
 private:
     std::unique_ptr<bhop> bhop_t;
@@ -199,7 +186,7 @@ DWORD WINAPI _readMemory_T(LPVOID lp)
         cheatManager_t._setAll();
         Sleep(10);
     }
-    std::cout << "\nrd mem lock";
+    std::cout << "\n[rd mem stop]";
     return 0;
 }
 HANDLE WINAPI startReadMemory_T(HANDLE& process)
@@ -214,7 +201,7 @@ HANDLE WINAPI startReadMemory_T(HANDLE& process)
     );
 
     if (hThread == NULL) {
-        std::cerr << "Не удалось создать поток чтения памяти!" << std::endl;
+        std::cerr << "[Error create thread!]" << std::endl;
     }
     return hThread;
 }
@@ -258,30 +245,18 @@ inline void simLoadProcess()
 
 inline bool _RUN() 
 {
-    if (process_id)
-    {
-        if (client_dll)
+	simLoadProcess();
+        HANDLE hReadThread = startReadMemory_T(processModules_t->getProcessHandle());
+        while (true) 
         {
-            if (hw_dll)
-            {
-                if (process)
-                {   
-                    simLoadProcess();
-
-                    HANDLE hReadThread = startReadMemory_T(process);
-
-                    while (true) 
-                    {
-                        if (GetAsyncKeyState(0x75)) { break; }
-                        cheatManager_t._execAll();
-                        Sleep(1);
-                    }
-                    endRMemory_T(hReadThread);
-                    return 0;
-                }
-            }
+        	if (GetAsyncKeyState(0x75)) { break; }
+        	cheatManager_t._execAll();
+        	Sleep(1);
         }
-    }
+		endRMemory_T(hReadThread);
+		delete processModules_t;
+		return 0;
+
     std::cout << "[Please, run cs 1.6!]" << '\n';
     return 0;
 }
