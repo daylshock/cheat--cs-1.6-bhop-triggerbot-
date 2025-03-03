@@ -126,7 +126,7 @@ public:
 class triggerBot : public cheatBase
 {
 public:
-    __thiscall triggerBot(const uint32_t& incrosshair) : incrosshair(incrosshair) {}
+    triggerBot(const uint32_t& incrosshair) : incrosshair(incrosshair) {}
 
     void __thiscall _set(const uint32_t& incrosshair_new) { incrosshair = incrosshair_new;}
 
@@ -149,7 +149,7 @@ private:
 class bhop : public cheatBase
 {
 public:
-    __thiscall bhop(const uint32_t& on_ground, HANDLE& process, uintptr_t& client_dll) :
+    bhop(const uint32_t& on_ground, HANDLE& process, uintptr_t& client_dll) :
         on_ground(on_ground), process(process), client_dll(client_dll) {
     }
 
@@ -172,7 +172,7 @@ private:
 class cheatManager
 {
 public:
-    __thiscall cheatManager() : bhop_t(std::make_unique<bhop>(0, process, client_dll)),
+    cheatManager() : bhop_t(std::make_unique<bhop>(0, process, client_dll)),
                      triggerbot_t(std::make_unique<triggerBot>(0)){}
     void _execAll()
     {
@@ -219,7 +219,7 @@ HANDLE WINAPI startReadMemory_T(HANDLE& process)
     return hThread;
 }
 
-inline void WINAPI endRWMemory_T(HANDLE& hThreadRead)
+inline void WINAPI endRMemory_T(HANDLE& hThreadRead)
 {
     if (hThreadRead) {
         rwrd_running = false;
@@ -276,7 +276,7 @@ inline bool _RUN()
                         cheatManager_t._execAll();
                         Sleep(1);
                     }
-                    endRWMemory_T(hReadThread);
+                    endRMemory_T(hReadThread);
                     return 0;
                 }
             }
