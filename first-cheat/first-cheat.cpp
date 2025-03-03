@@ -190,11 +190,11 @@ private:
     std::unique_ptr<triggerBot> triggerbot_t;
 }cheatManager_t;
 
-bool rwrd_running = true;
+bool rd_running = true;
 
 DWORD WINAPI _readMemory_T(LPVOID lp)
 {
-    while (rwrd_running)
+    while (rd_running)
     {
         cheatManager_t._setAll();
         Sleep(10);
@@ -222,7 +222,7 @@ HANDLE WINAPI startReadMemory_T(HANDLE& process)
 inline void WINAPI endRMemory_T(HANDLE& hThreadRead)
 {
     if (hThreadRead) {
-        rwrd_running = false;
+        rd_running = false;
 
         WaitForSingleObject(hThreadRead, INFINITE);
         CloseHandle(hThreadRead);
@@ -282,12 +282,8 @@ inline bool _RUN()
             }
         }
     }
-    else
-    {
-        std::cout << "\n[Please, run cs 1.6!]" << '\n';
-        return 0;
-    }
-        
+    std::cout << "[Please, run cs 1.6!]" << '\n';
+    return 0;
 }
 
 int main()
