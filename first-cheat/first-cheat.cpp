@@ -71,7 +71,22 @@ namespace utils
     }
 }
 
-class processModules
+class processModulesBase
+{
+public:
+    virtual ~processModulesBase() = default;
+    virtual uintptr_t& getClientModuleBaseAddress() = 0;
+    virtual uintptr_t& getHwModuleBaseAddress() = 0;
+    virtual DWORD getProcessId() = 0;
+    virtual HANDLE& getProcessHandle() = 0;
+};
+class cheatBase 
+{
+public:
+    virtual void exec() = 0;
+    ~cheatBase() = default;
+};
+class processModules : public processModulesBase
 {
 public:
 	processModules(const char* PROCESS_NAME, const char* CLIENT_MODULE_NAME, const char* HW_MODULE_NAME)
@@ -94,25 +109,27 @@ public:
 		if(processHandle)
 			CloseHandle(processHandle);
 	}
-	uintptr_t& getClientModuleBaseAddress(){return clientDll;}
-    uintptr_t& getHwModuleBaseAddress(){return hwDll;}
-	DWORD getProcessId(){return processId;}
-	HANDLE& getProcessHandle(){return processHandle;}
+	uintptr_t& getClientModuleBaseAddress() override { return clientDll;}
+    uintptr_t& getHwModuleBaseAddress() override {return hwDll;}
+	DWORD getProcessId() override {return processId;}
+	HANDLE& getProcessHandle() override {return processHandle;}
+
+    inline bool isValid() 
+    {
+        if (processId)
+            if (processHandle)
+                if (clientDll)
+                    if (hwDll)
+                        return true;
+     };
 
 private:
 	uintptr_t clientDll = 0;
 	uintptr_t hwDll = 0;
 	DWORD processId = 0;
 	HANDLE processHandle = nullptr;
-
+    
 }*processModules_t = new processModules(PROCCESS_NAME, CLIENT, HW);
-
-class cheatBase 
-{
-public:
-    virtual void exec() = 0;
-    ~cheatBase() = default;
-};
 class triggerBot : public cheatBase
 {
 public:
@@ -134,12 +151,12 @@ public:
     }
 private:
     uint32_t incrosshair = 0;
-};
+}*triggerBot_t = new triggerBot();
 class bhop : public cheatBase
 {
 public:
-    bhop(HANDLE& process, uintptr_t& client_dll) :
-         process(process), client_dll(client_dll) {}
+    bhop(HANDLE& process, uintptr_t& client_dll) :process(process),
+                                                  client_dll(client_dll) {}
 
     void __thiscall set(const uint32_t& ON_GROUND_NEW) { on_ground = ON_GROUND_NEW; }
 
@@ -155,27 +172,39 @@ private:
     uint32_t on_ground = 0;
     HANDLE process;
     uintptr_t client_dll;
-};
-
-class cheatManager
+}*bhop_t = new bhop(processModules_t->getProcessHandle(), processModules_t->getClientModuleBaseAddress());
+class cheatManager : public cheatBase
 {
 public:
-    cheatManager() : 	bhop_t(std::make_unique<bhop>(processModules_t->getProcessHandle(), processModules_t->getClientModuleBaseAddress())),
-						triggerbot_t(std::make_unique<triggerBot>()){}
-    void execAll()
+    cheatManager(bhop* bhop_t, triggerBot* triggerBot_t) : bhop_t(bhop_t),
+                                                           triggerBot_t(triggerBot_t)
+    {
+        if (!bhop_t) 
+            bhop_t = nullptr;
+        if (!triggerBot_t)
+            triggerBot_t = nullptr;
+    };
+    ~cheatManager() 
+    {
+        if(!bhop_t)
+            delete bhop_t;
+        if(!triggerBot_t)
+            delete triggerBot_t;
+    };
+    void exec() override 
     {
         bhop_t->exec();
-        triggerbot_t->exec();
+        triggerBot_t->exec();
     }
     void setAll()
     {
         bhop_t->set(utils::read_process_memory<uint32_t>(processModules_t->getProcessHandle(), processModules_t->getHwModuleBaseAddress() + offset::on_ground_offset));
-        triggerbot_t->set(utils::read_process_memory<uint32_t>(processModules_t->getProcessHandle(), processModules_t->getClientModuleBaseAddress() + offset::incrosshair_offset));
+        triggerBot_t->set(utils::read_process_memory<uint32_t>(processModules_t->getProcessHandle(), processModules_t->getClientModuleBaseAddress() + offset::incrosshair_offset));
     }
 private:
-    std::unique_ptr<bhop> bhop_t;
-    std::unique_ptr<triggerBot> triggerbot_t;
-}cheatManager_t;
+    bhop* bhop_t = nullptr;
+    triggerBot* triggerBot_t = nullptr;
+}*cheatManager_t = new cheatManager(bhop_t, triggerBot_t);
 
 bool running = true;
 
@@ -183,7 +212,7 @@ DWORD WINAPI readMemory(LPVOID lp)
 {
     while (running)
     {
-        cheatManager_t.setAll();
+        cheatManager_t->setAll();
         Sleep(10);
     }
     std::cout << "\n[rd mem stop]";
@@ -241,21 +270,31 @@ inline void simLoadProcess()
     }
 }
 
+inline void stopCheat(HANDLE& threadRead) 
+{
+    stopReadMemory(threadRead);
+    delete processModules_t;
+    delete cheatManager_t;
+}
+
 inline bool runCheat() 
 {
-	simLoadProcess();
-    HANDLE threadRead = startThreadReadMemory(processModules_t->getProcessHandle());
-    while (true) 
+    if(processModules_t->isValid())
     {
-        if (GetAsyncKeyState(0x75)) { break; }
-        cheatManager_t.execAll();
-        Sleep(1);
+            simLoadProcess();
+            HANDLE threadRead = startThreadReadMemory(processModules_t->getProcessHandle());
+            while (true) 
+            {
+                if (GetAsyncKeyState(0x75)) { break; }
+                cheatManager_t->exec();
+                Sleep(1);
+            }
+            stopCheat(threadRead);
     }
-	stopReadMemory(threadRead);
-	delete processModules_t;
-    std::cout << "[Please, run cs 1.6!]" << '\n';
+	std::cout << "[Please, run cs 1.6!]" << '\n';
     return 0;
 }
+
 
 int main()
 {
