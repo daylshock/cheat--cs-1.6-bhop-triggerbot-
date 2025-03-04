@@ -251,9 +251,8 @@ inline bool runCheat()
         cheatManager_t.execAll();
         Sleep(1);
     }
-		stopReadMemory(threadRead);
-		delete processModules_t;
-		return 0;
+	stopReadMemory(threadRead);
+	delete processModules_t;
     std::cout << "[Please, run cs 1.6!]" << '\n';
     return 0;
 }
