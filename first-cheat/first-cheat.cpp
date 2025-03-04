@@ -139,7 +139,7 @@ class bhop : public cheatBase
 {
 public:
     bhop(HANDLE& process, uintptr_t& client_dll) :
-        on_ground(on_ground), process(process), client_dll(client_dll) {}
+         process(process), client_dll(client_dll) {}
 
     void __thiscall set(const uint32_t& ON_GROUND_NEW) { on_ground = ON_GROUND_NEW; }
 
