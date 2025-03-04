@@ -3,8 +3,6 @@
 #include <Windows.h>
 #include <TlHelp32.h>
 #include <string>
-#include <chrono>
-#include <map>
 #include <memory>
 
 #define PROCCESS_NAME "cs.exe"
@@ -121,6 +119,7 @@ public:
                 if (clientDll)
                     if (hwDll)
                         return true;
+        return false;
      };
 
 private:
@@ -129,7 +128,7 @@ private:
 	DWORD processId = 0;
 	HANDLE processHandle = nullptr;
     
-}*processModules_t = new processModules(PROCCESS_NAME, CLIENT, HW);
+}*objprocessModules = new processModules(PROCCESS_NAME, CLIENT, HW);
 class triggerBot : public cheatBase
 {
 public:
@@ -151,7 +150,7 @@ public:
     }
 private:
     uint32_t incrosshair = 0;
-}*triggerBot_t = new triggerBot();
+}*objTriggerBot = new triggerBot();
 class bhop : public cheatBase
 {
 public:
@@ -172,39 +171,39 @@ private:
     uint32_t on_ground = 0;
     HANDLE process;
     uintptr_t client_dll;
-}*bhop_t = new bhop(processModules_t->getProcessHandle(), processModules_t->getClientModuleBaseAddress());
+}*objBhop = new bhop(objprocessModules->getProcessHandle(), objprocessModules->getClientModuleBaseAddress());
 class cheatManager : public cheatBase
 {
 public:
-    cheatManager(bhop* bhop_t, triggerBot* triggerBot_t) : bhop_t(bhop_t),
-                                                           triggerBot_t(triggerBot_t)
+    cheatManager(bhop* otherObjBhop, triggerBot* otherObjTriggerBot) : objBhop(otherObjBhop),
+                                                                       objTriggerBot(otherObjTriggerBot)
     {
-        if (!bhop_t) 
-            bhop_t = nullptr;
-        if (!triggerBot_t)
-            triggerBot_t = nullptr;
+        if (!otherObjBhop)
+            otherObjBhop = nullptr;
+        if (!otherObjTriggerBot)
+            otherObjTriggerBot = nullptr;
     };
     ~cheatManager() 
     {
-        if(!bhop_t)
-            delete bhop_t;
-        if(!triggerBot_t)
-            delete triggerBot_t;
+        if(!objBhop)
+            delete objBhop;
+        if(!objTriggerBot)
+            delete objTriggerBot;
     };
     void exec() override 
     {
-        bhop_t->exec();
-        triggerBot_t->exec();
+        objBhop->exec();
+        objTriggerBot->exec();
     }
     void setAll()
     {
-        bhop_t->set(utils::read_process_memory<uint32_t>(processModules_t->getProcessHandle(), processModules_t->getHwModuleBaseAddress() + offset::on_ground_offset));
-        triggerBot_t->set(utils::read_process_memory<uint32_t>(processModules_t->getProcessHandle(), processModules_t->getClientModuleBaseAddress() + offset::incrosshair_offset));
+        objBhop->set(utils::read_process_memory<uint32_t>(objprocessModules->getProcessHandle(), objprocessModules->getHwModuleBaseAddress() + offset::on_ground_offset));
+        objTriggerBot->set(utils::read_process_memory<uint32_t>(objprocessModules->getProcessHandle(), objprocessModules->getClientModuleBaseAddress() + offset::incrosshair_offset));
     }
 private:
-    bhop* bhop_t = nullptr;
-    triggerBot* triggerBot_t = nullptr;
-}*cheatManager_t = new cheatManager(bhop_t, triggerBot_t);
+    bhop* objBhop = nullptr;
+    triggerBot* objTriggerBot = nullptr;
+}*objcheatManager = new cheatManager(objBhop, objTriggerBot);
 
 bool running = true;
 
@@ -212,7 +211,7 @@ DWORD WINAPI readMemory(LPVOID lp)
 {
     while (running)
     {
-        cheatManager_t->setAll();
+        objcheatManager->setAll();
         Sleep(10);
     }
     std::cout << "\n[rd mem stop]";
@@ -273,20 +272,20 @@ inline void simLoadProcess()
 inline void stopCheat(HANDLE& threadRead) 
 {
     stopReadMemory(threadRead);
-    delete processModules_t;
-    delete cheatManager_t;
+    delete objprocessModules;
+    delete objcheatManager;
 }
 
 inline bool runCheat() 
 {
-    if(processModules_t->isValid())
+    if(objprocessModules->isValid())
     {
             simLoadProcess();
-            HANDLE threadRead = startThreadReadMemory(processModules_t->getProcessHandle());
+            HANDLE threadRead = startThreadReadMemory(objprocessModules->getProcessHandle());
             while (true) 
             {
                 if (GetAsyncKeyState(0x75)) { break; }
-                cheatManager_t->exec();
+                objcheatManager->exec();
                 Sleep(1);
             }
             stopCheat(threadRead);
