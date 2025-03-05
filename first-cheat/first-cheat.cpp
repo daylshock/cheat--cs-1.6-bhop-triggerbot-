@@ -104,26 +104,10 @@ class processModules : public processModulesBase
 public:
     processModules(const char* PROCESS_NAME, const char* CLIENT_MODULE_NAME, const char* HW_MODULE_NAME)
     {
-        //fix 
-        try
-        {
-            processId = utils::get_process_id(PROCESS_NAME);
-            if (!processId)
-                throw std::runtime_error("Invalid processID");
-            processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
-            if (!processHandle)
-                throw std::runtime_error("Invalid processHANDLE");
-            clientDll = utils::get_module_base_address(processId, CLIENT_MODULE_NAME);
-            if (!clientDll)
-                throw std::runtime_error("Invalid client_dll");
-            hwDll = utils::get_module_base_address(processId, HW_MODULE_NAME);
-            if (!hwDll)
-                throw std::runtime_error("Invalid hw_dll");
-        }
-        catch (const std::runtime_error& error)
-        {
-            std::cout << error.what() << '\n';
-        }
+        processId = utils::get_process_id(PROCESS_NAME);
+        processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
+        clientDll = utils::get_module_base_address(processId, CLIENT_MODULE_NAME);
+        hwDll = utils::get_module_base_address(processId, HW_MODULE_NAME);
     }
     ~processModules()
     {
