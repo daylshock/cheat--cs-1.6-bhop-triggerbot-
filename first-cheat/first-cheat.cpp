@@ -1,9 +1,9 @@
-﻿
-#include <iostream>
+﻿#include <iostream>
 #include <Windows.h>
 #include <TlHelp32.h>
 #include <string>
 #include <memory>
+#include <chrono>
 
 #define PROCCESS_NAME "cs.exe"
 #define CLIENT "client.dll"
@@ -32,13 +32,17 @@ namespace utils
      DWORD get_process_id(const char* process_name) {
         DWORD processId = 0;
         HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        if (snapshot != INVALID_HANDLE_VALUE) {
+        if (snapshot != INVALID_HANDLE_VALUE) 
+        {
             PROCESSENTRY32 processEntry;
             processEntry.dwSize = sizeof(PROCESSENTRY32);
 
-            if (Process32First(snapshot, &processEntry)) {
-                do {
-                    if (_stricmp(processEntry.szExeFile, process_name) == 0) {
+            if (Process32First(snapshot, &processEntry)) 
+            {
+                do 
+                {
+                    if (_stricmp(processEntry.szExeFile, process_name) == 0) 
+                    {
                         processId = processEntry.th32ProcessID;
                         break;
                     }
@@ -48,16 +52,20 @@ namespace utils
 	}
         return processId;
     }
-     uintptr_t get_module_base_address(DWORD process_id, const char* module_name) {
+     uintptr_t get_module_base_address(DWORD process_id, const char* module_name) 
+     {
         uintptr_t moduleBaseAddress = 0;
         HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, process_id);
-        if (snapshot != INVALID_HANDLE_VALUE) {
+        if (snapshot != INVALID_HANDLE_VALUE)
+        {
             MODULEENTRY32 moduleEntry;
             moduleEntry.dwSize = sizeof(MODULEENTRY32);
 
-            if (Module32First(snapshot, &moduleEntry)) {
+            if (Module32First(snapshot, &moduleEntry)) 
+            {
                 do {
-                    if (_stricmp(moduleEntry.szModule, module_name) == 0) {
+                    if (_stricmp(moduleEntry.szModule, module_name) == 0) 
+                    {
                         moduleBaseAddress = (uintptr_t)moduleEntry.modBaseAddr;
                         break;
                     }
@@ -84,35 +92,50 @@ public:
     virtual void exec() = 0;
     ~cheatBase() = default;
 };
+class cheatManangerBase 
+{
+public:
+    virtual ~cheatManangerBase() = default;
+    virtual void execAll() = 0;
+    virtual void setAll() = 0;
+};
 class processModules : public processModulesBase
 {
 public:
-	processModules(const char* PROCESS_NAME, const char* CLIENT_MODULE_NAME, const char* HW_MODULE_NAME)
-	{
-		processId = utils::get_process_id(PROCESS_NAME);
-		if(!processId) 
-            throw std::runtime_error("Invalid processID");
-		processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
-	   	if(!processHandle)
-            throw std::runtime_error("Invalid processHANDLE");
-		clientDll = utils::get_module_base_address(processId, CLIENT_MODULE_NAME);
-		if(!clientDll)
-            throw std::runtime_error("Invalid client_dll");
-		hwDll = utils::get_module_base_address(processId, HW_MODULE_NAME);
-		if(!hwDll)
-            throw std::runtime_error("Invalid hw_dll");	
-	}
-	~processModules()
-	{
-		if(processHandle)
-			CloseHandle(processHandle);
-	}
-	uintptr_t& getClientModuleBaseAddress() override { return clientDll;}
-    uintptr_t& getHwModuleBaseAddress() override {return hwDll;}
-	DWORD getProcessId() override {return processId;}
-	HANDLE& getProcessHandle() override {return processHandle;}
+    processModules(const char* PROCESS_NAME, const char* CLIENT_MODULE_NAME, const char* HW_MODULE_NAME)
+    {
+        //fix 
+        try
+        {
+            processId = utils::get_process_id(PROCESS_NAME);
+            if (!processId)
+                throw std::runtime_error("Invalid processID");
+            processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, processId);
+            if (!processHandle)
+                throw std::runtime_error("Invalid processHANDLE");
+            clientDll = utils::get_module_base_address(processId, CLIENT_MODULE_NAME);
+            if (!clientDll)
+                throw std::runtime_error("Invalid client_dll");
+            hwDll = utils::get_module_base_address(processId, HW_MODULE_NAME);
+            if (!hwDll)
+                throw std::runtime_error("Invalid hw_dll");
+        }
+        catch (const std::runtime_error& error)
+        {
+            std::cout << error.what() << '\n';
+        }
+    }
+    ~processModules()
+    {
+        if (processHandle)
+            CloseHandle(processHandle);
+    }
+    uintptr_t& getClientModuleBaseAddress() override { return clientDll; }
+    uintptr_t& getHwModuleBaseAddress() override { return hwDll; }
+    DWORD getProcessId() override { return processId; }
+    HANDLE& getProcessHandle() override { return processHandle; }
 
-    inline bool isValid() 
+    inline bool isValid()
     {
         if (processId)
             if (processHandle)
@@ -120,24 +143,30 @@ public:
                     if (hwDll)
                         return true;
         return false;
-     };
+    };
 
 private:
-	uintptr_t clientDll = 0;
-	uintptr_t hwDll = 0;
-	DWORD processId = 0;
-	HANDLE processHandle = nullptr;
-    
-}*objprocessModules = new processModules(PROCCESS_NAME, CLIENT, HW);
+    uintptr_t clientDll = 0;
+    uintptr_t hwDll = 0;
+    DWORD processId = 0;
+    HANDLE processHandle = nullptr;
+}*objprocessModules
+= new processModules(PROCCESS_NAME, CLIENT, HW);
+
 class triggerBot : public cheatBase
 {
 public:
     triggerBot() {}
     void __thiscall set(const uint32_t& INCROSSHAIR_NEW) { incrosshair = INCROSSHAIR_NEW; }
 
-	void exec() override
+    void exec() override
     {
-        if(incrosshair == 0x02)
+        if (GetAsyncKeyState(0x74) && !isKeyPressed)
+            isKeyPressed = true;
+        else if (GetAsyncKeyState(0x74) && isKeyPressed)
+            isKeyPressed = false;
+
+        if (isKeyPressed && incrosshair == 0x02)
         {
             INPUT input = { 0 };
             input.type = INPUT_MOUSE;
@@ -150,12 +179,16 @@ public:
     }
 private:
     uint32_t incrosshair = 0;
-}*objTriggerBot = new triggerBot();
+    bool isKeyPressed = false;
+}*objTriggerBot 
+= new triggerBot();
+
 class bhop : public cheatBase
 {
 public:
     bhop(HANDLE& process, uintptr_t& client_dll) :process(process),
-                                                  client_dll(client_dll) {}
+        client_dll(client_dll) {
+    }
 
     void __thiscall set(const uint32_t& ON_GROUND_NEW) { on_ground = ON_GROUND_NEW; }
 
@@ -164,46 +197,56 @@ public:
         if (GetAsyncKeyState(0x20))
         {
             on_ground ? utils::write_process_memory<int>(process, client_dll + offset::jump_offset, 5) :
-                        utils::write_process_memory(process, client_dll + offset::jump_offset, 4);
+                utils::write_process_memory(process, client_dll + offset::jump_offset, 4);
         }
     }
 private:
     uint32_t on_ground = 0;
     HANDLE process;
     uintptr_t client_dll;
-}*objBhop = new bhop(objprocessModules->getProcessHandle(), objprocessModules->getClientModuleBaseAddress());
-class cheatManager : public cheatBase
+}*objBhop 
+= new bhop(objprocessModules->getProcessHandle(),
+                                        objprocessModules->getClientModuleBaseAddress()
+                                       );
+class cheatManager : public cheatManangerBase
 {
 public:
     cheatManager(bhop* otherObjBhop, triggerBot* otherObjTriggerBot) : objBhop(otherObjBhop),
-                                                                       objTriggerBot(otherObjTriggerBot)
+        objTriggerBot(otherObjTriggerBot)
     {
         if (!otherObjBhop)
             otherObjBhop = nullptr;
         if (!otherObjTriggerBot)
             otherObjTriggerBot = nullptr;
     };
-    ~cheatManager() 
+    ~cheatManager()
     {
-        if(!objBhop)
+        if (!objBhop)
             delete objBhop;
-        if(!objTriggerBot)
+        if (!objTriggerBot)
             delete objTriggerBot;
     };
-    void exec() override 
+    void execAll() override
     {
         objBhop->exec();
         objTriggerBot->exec();
     }
-    void setAll()
+    void setAll() override
     {
-        objBhop->set(utils::read_process_memory<uint32_t>(objprocessModules->getProcessHandle(), objprocessModules->getHwModuleBaseAddress() + offset::on_ground_offset));
-        objTriggerBot->set(utils::read_process_memory<uint32_t>(objprocessModules->getProcessHandle(), objprocessModules->getClientModuleBaseAddress() + offset::incrosshair_offset));
+        objBhop->set(utils::read_process_memory<uint32_t>(
+            objprocessModules->getProcessHandle(),
+            objprocessModules->getHwModuleBaseAddress() + offset::on_ground_offset)
+        );
+        objTriggerBot->set(utils::read_process_memory<uint32_t>(
+            objprocessModules->getProcessHandle(),
+            objprocessModules->getClientModuleBaseAddress() + offset::incrosshair_offset)
+        );
     }
 private:
     bhop* objBhop = nullptr;
     triggerBot* objTriggerBot = nullptr;
-}*objcheatManager = new cheatManager(objBhop, objTriggerBot);
+}*objcheatManager 
+= new cheatManager(objBhop, objTriggerBot);
 
 bool running = true;
 
@@ -212,7 +255,7 @@ DWORD WINAPI readMemory(LPVOID lp)
     while (running)
     {
         objcheatManager->setAll();
-        Sleep(10);
+        Sleep(5);
     }
     std::cout << "\n[rd mem stop]";
     return 0;
@@ -244,7 +287,7 @@ inline void WINAPI stopReadMemory(HANDLE& ThreadRead)
 inline void simLoadProcess() 
 {
     const char LOADING_SYMBOLS[] = { '/','-' ,'\\','|' };
-    char welcomeBar[] = { "[Loading]\n*[Done]\n[Welcome!]\n[bhop-triggerBot] > [Active]\n[Exit] > [F6]" };
+    char welcomeBar[] = { "[Loading]\n*[Done]\n[Welcome!]\n[bhop-triggerBot] > [Active]\n[TriggerBot][off|on] > [F5]\n[Exit] > [F6]" };
 
     const int SIZE_ARRY_LOADING_SYMBOLS = sizeof(LOADING_SYMBOLS) / sizeof(LOADING_SYMBOLS[0]);
     
@@ -265,35 +308,41 @@ inline void simLoadProcess()
             (*i) = 0x10;
         }
         std::cout << *i;
-        Sleep(100);
+        Sleep(40);
     }
 }
 
-inline void stopCheat(HANDLE& threadRead) 
-{
+inline void stopCheat(HANDLE& threadRead, cheatManager* & objcheatManager,
+                      processModules* & objprocessModules
+                     )
+{ 
     stopReadMemory(threadRead);
-    delete objprocessModules;
     delete objcheatManager;
+    delete objprocessModules;
 }
-
 inline bool runCheat() 
 {
-    if(objprocessModules->isValid())
+    try
     {
-            simLoadProcess();
-            HANDLE threadRead = startThreadReadMemory(objprocessModules->getProcessHandle());
-            while (true) 
-            {
-                if (GetAsyncKeyState(0x75)) { break; }
-                objcheatManager->exec();
-                Sleep(1);
-            }
-            stopCheat(threadRead);
+        if(objprocessModules && objprocessModules->isValid())
+        {
+                simLoadProcess();
+                HANDLE threadRead = startThreadReadMemory(objprocessModules->getProcessHandle());
+                while (true) 
+                {
+                    if (GetAsyncKeyState(0x75)) { break;}
+                    objcheatManager->execAll();
+                    Sleep(1);
+                }
+                stopCheat(threadRead, objcheatManager, objprocessModules);
+        }
     }
-	std::cout << "[Please, run cs 1.6!]" << '\n';
+    catch (const std::runtime_error& error)
+    {
+        std::cout << error.what() << '\n';
+    }
     return 0;
 }
-
 
 int main()
 {
