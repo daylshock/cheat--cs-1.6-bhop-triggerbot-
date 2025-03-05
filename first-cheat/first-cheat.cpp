@@ -3,7 +3,6 @@
 #include <TlHelp32.h>
 #include <string>
 #include <memory>
-#include <chrono>
 
 #define PROCCESS_NAME "cs.exe"
 #define CLIENT "client.dll"
@@ -95,9 +94,9 @@ public:
 class cheatManangerBase 
 {
 public:
-    virtual ~cheatManangerBase() = default;
     virtual void execAll() = 0;
     virtual void setAll() = 0;
+    virtual ~cheatManangerBase() = default;
 };
 class processModules : public processModulesBase
 {
@@ -121,14 +120,24 @@ public:
 
     inline bool isValid()
     {
-        if (processId)
-            if (processHandle)
+        if (processId) 
+        {
+            if (processHandle) 
+            {
                 if (clientDll)
+                {
                     if (hwDll)
+                    {
                         return true;
+                    }
+                }
+            }
+        }
+        else
+            throw std::runtime_error{ "[Error, please run cs 1.6]" };      
+
         return false;
     };
-
 private:
     uintptr_t clientDll = 0;
     uintptr_t hwDll = 0;
@@ -241,7 +250,6 @@ DWORD WINAPI readMemory(LPVOID lp)
         objcheatManager->setAll();
         Sleep(5);
     }
-    std::cout << "\n[rd mem stop]";
     return 0;
 }
 HANDLE WINAPI startThreadReadMemory(HANDLE& process)
@@ -271,7 +279,7 @@ inline void WINAPI stopReadMemory(HANDLE& ThreadRead)
 inline void simLoadProcess() 
 {
     const char LOADING_SYMBOLS[] = { '/','-' ,'\\','|' };
-    char welcomeBar[] = { "[Loading]\n*[Done]\n[Welcome!]\n[bhop-triggerBot] > [Active]\n[TriggerBot][off|on] > [F5]\n[Exit] > [F6]" };
+    char welcomeBar[] = { "[Loading]\n*[Done]\n[Welcome!]\n[Bhop-TriggerBot] > [Active]\n[TriggerBot][off|on] > [F5]\n[Exit] > [F6]\n" };
 
     const int SIZE_ARRY_LOADING_SYMBOLS = sizeof(LOADING_SYMBOLS) / sizeof(LOADING_SYMBOLS[0]);
     
@@ -325,10 +333,11 @@ inline bool runCheat()
     {
         std::cout << error.what() << '\n';
     }
+    system("pause");
     return 0;
 }
 
 int main()
-{
+{ 
     if(!runCheat()) return EXIT_SUCCESS;
 }
